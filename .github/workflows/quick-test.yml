@@ -1,0 +1,41 @@
+name: Quick Test
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  quick-test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.11"
+    
+    - name: Quick install and test
+      run: |
+        python -m pip install --upgrade pip
+        pip install Pillow
+        pip install -e .
+        
+        # Quick functionality test
+        python -c "
+        from manhwa_bubbles import speech_bubble, narrator_plain
+        from PIL import Image, ImageDraw
+        
+        img = Image.new('RGB', (300, 200), 'lightblue')
+        draw = ImageDraw.Draw(img)
+        
+        # Test main functions
+        speech_bubble(draw, (10, 10, 100, 60), 'Test', 'oval')
+        speech_bubble(draw, (120, 10, 100, 60), 'Heart', 'heart') 
+        narrator_plain(draw, (10, 80, 200, 40), 'Quick test')
+        
+        print('✅ Quick test passed!')
+        "

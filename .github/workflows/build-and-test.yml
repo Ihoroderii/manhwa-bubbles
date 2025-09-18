@@ -2,9 +2,9 @@ name: Build and Test
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, develop ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, develop ]
 
 jobs:
   test:
@@ -27,19 +27,49 @@ jobs:
         pip install build pytest Pillow
         pip install -e .
     
-    - name: Run tests
+    - name: Run import tests
+      run: |
+        python -c "from manhwa_bubbles import speech_bubble, narrator_plain; print('✅ Import test passed')"
+    
+    - name: Run comprehensive tests
       run: |
         python test_library.py
+    
+    - name: Test demo script
+      run: |
         python examples/demo.py
+    
+    - name: Test new bubble types
+      run: |
+        python -c "
+        from PIL import Image, ImageDraw
+        from manhwa_bubbles import speech_bubble
+        img = Image.new('RGB', (400, 300), 'white')
+        draw = ImageDraw.Draw(img)
+        bubble_types = ['heart', 'spiky', 'glow', 'scratchy']
+        for i, bt in enumerate(bubble_types):
+            speech_bubble(draw, (i*80+10, 10, 70, 50), bt, bt)
+        img.save('new_bubbles_test.png')
+        print('✅ New bubble types test passed')
+        "
     
     - name: Build package
       run: python -m build
     
-    - name: Upload build artifacts
-      uses: actions/upload-artifact@v3
+    - name: Test package installation
+      run: |
+        pip uninstall manhwa-bubbles -y
+        pip install dist/*.whl
+        python -c "from manhwa_bubbles import speech_bubble; print('✅ Package installation test passed')"
+    
+    - name: Upload test artifacts
+      if: always()
+      uses: actions/upload-artifact@v4
       with:
-        name: dist-files-${{ matrix.python-version }}
-        path: dist/
+        name: test-results-py${{ matrix.python-version }}
+        path: |
+          *.png
+          dist/
 
   build:
     runs-on: ubuntu-latest

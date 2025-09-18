@@ -1,5 +1,10 @@
 # Manhwa Bubbles
 
+[![Build and Test](https://github.com/Ihoroderii/manhwa-bubbles/workflows/Build%20and%20Test/badge.svg)](https://github.com/Ihoroderii/manhwa-bubbles/actions)
+[![Python Version](https://img.shields.io/badge/python-3.8%2B-blue)](https://pypi.org/project/manhwa-bubbles/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![GitHub release](https://img.shields.io/github/release/Ihoroderii/manhwa-bubbles.svg)](https://github.com/Ihoroderii/manhwa-bubbles/releases/)
+
 A Python library for creating manhwa-style speech bubbles and narration boxes using PIL (Pillow).
 
 ## Features
