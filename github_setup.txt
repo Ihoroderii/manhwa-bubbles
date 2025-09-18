@@ -1,0 +1,9 @@
+# GitHub Setup Commands
+# Run these after creating your GitHub repository
+
+# Add GitHub as remote origin
+git remote add origin https://github.com/ihoroderii/manhwa-bubbles.git
+
+# Push your code to GitHub
+git branch -M main
+git push -u origin main
