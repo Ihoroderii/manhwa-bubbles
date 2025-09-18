@@ -8,6 +8,10 @@ def test_import():
         from manhwa_bubbles import (
             speech_bubble, 
             draw_tail,
+            bubble_heart,
+            bubble_spiky,
+            bubble_glow,
+            bubble_scratchy,
             narrator_plain, 
             narrator_borderless,
             narrator_dashed, 
@@ -54,18 +58,19 @@ def test_all_bubble_types():
         from PIL import Image, ImageDraw
         from manhwa_bubbles import speech_bubble
         
-        img = Image.new("RGB", (600, 400), "lightblue")
+        img = Image.new("RGB", (800, 600), "lightblue")
         draw = ImageDraw.Draw(img)
         
-        bubble_types = ["oval", "rect", "cloud", "jagged", "wavy", "black"]
+        bubble_types = ["oval", "rect", "cloud", "jagged", "wavy", "black", "heart", "spiky", "glow", "scratchy"]
         
         for i, bubble_type in enumerate(bubble_types):
-            x = (i % 3) * 180 + 20
-            y = (i // 3) * 120 + 20
-            speech_bubble(draw, (x, y, 150, 80), f"{bubble_type}", bubble_type)
+            x = (i % 5) * 150 + 20
+            y = (i // 5) * 120 + 20
+            speech_bubble(draw, (x, y, 120, 80), f"{bubble_type}", bubble_type)
         
         img.save("all_bubbles_test.png")
         print("✅ All bubble types test passed!")
+        print(f"✅ Tested {len(bubble_types)} bubble types: {', '.join(bubble_types)}")
         print("✅ All bubbles image saved as 'all_bubbles_test.png'")
         return True
         

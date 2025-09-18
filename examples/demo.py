@@ -19,28 +19,40 @@ def demo_speech_bubbles():
     print("Creating speech bubbles demo...")
     
     # Create canvas
-    img = Image.new("RGB", (800, 600), "lightblue")
+    img = Image.new("RGB", (1200, 800), "lightblue")
     draw = ImageDraw.Draw(img)
     
     # Title
-    draw.text((10, 10), "Manhwa Speech Bubbles Demo", fill="black")
+    draw.text((10, 10), "Manhwa Speech Bubbles Demo - All Types", fill="black")
     
-    # Examples of different bubble types
-    speech_bubble(draw, (50, 50, 200, 100), "Normal speech", "oval")
-    speech_bubble(draw, (300, 50, 200, 100), "Narration", "rect")
-    speech_bubble(draw, (550, 50, 200, 100), "Thinking...", "cloud")
+    # Examples of different bubble types (original 6)
+    speech_bubble(draw, (50, 50, 180, 80), "Normal speech", "oval")
+    speech_bubble(draw, (250, 50, 180, 80), "Narration", "rect")
+    speech_bubble(draw, (450, 50, 180, 80), "Thinking...", "cloud")
     
-    speech_bubble(draw, (50, 250, 200, 120), "HEY!!", "jagged")
-    speech_bubble(draw, (300, 250, 200, 100), "I'm nervous...", "wavy")
-    speech_bubble(draw, (550, 250, 200, 100), "Dark thoughts", "black")
+    speech_bubble(draw, (50, 200, 180, 100), "HEY!!", "jagged")
+    speech_bubble(draw, (250, 200, 180, 100), "I'm nervous...", "wavy")
+    speech_bubble(draw, (450, 200, 180, 100), "Dark thoughts", "black")
     
-    # Add labels
-    draw.text((50, 160), "Normal", fill="black")
-    draw.text((300, 160), "Narration", fill="black")
-    draw.text((550, 160), "Thought", fill="black")
-    draw.text((50, 380), "Shouting", fill="black")
-    draw.text((300, 360), "Nervous", fill="black")
-    draw.text((550, 360), "Dark", fill="black")
+    # NEW: Examples of new bubble types
+    speech_bubble(draw, (650, 50, 180, 120), "Love~", "heart")
+    speech_bubble(draw, (850, 50, 180, 120), "RAGE!!", "spiky")
+    speech_bubble(draw, (650, 220, 180, 120), "Divine voice", "glow")
+    speech_bubble(draw, (850, 220, 180, 120), "Madness...", "scratchy")
+    
+    # Add labels for original types
+    draw.text((50, 140), "Normal", fill="black")
+    draw.text((250, 140), "Narration", fill="black")
+    draw.text((450, 140), "Thought", fill="black")
+    draw.text((50, 310), "Shouting", fill="black")
+    draw.text((250, 310), "Nervous", fill="black")
+    draw.text((450, 310), "Dark", fill="black")
+    
+    # Add labels for new types
+    draw.text((650, 180), "Heart", fill="red")
+    draw.text((850, 180), "Spiky", fill="black")
+    draw.text((650, 350), "Glow", fill="gold")
+    draw.text((850, 350), "Scratchy", fill="black")
     
     img.save("examples/speech_bubbles_demo.png")
     print("Saved: examples/speech_bubbles_demo.png")
@@ -78,37 +90,43 @@ def demo_narration_boxes():
 
 
 def demo_comic_panel():
-    """Creates a sample comic panel using multiple elements."""
+    """Creates a sample comic panel using multiple elements including new bubble types."""
     print("Creating comic panel demo...")
     
     # Create canvas
-    img = Image.new("RGB", (1000, 700), "white")
+    img = Image.new("RGB", (1200, 800), "white")
     draw = ImageDraw.Draw(img)
     
     # Title
-    draw.text((10, 10), "Sample Comic Panel", fill="black")
+    draw.text((10, 10), "Sample Comic Panel - All Bubble Types", fill="black")
     
     # Scene setup narration
     narrator_plain(draw, (50, 50, 300, 60), "Meanwhile, in the dark forest...")
     
-    # Character dialogue
+    # Character dialogue with original types
     speech_bubble(draw, (100, 150, 180, 80), "Who's there?", "oval", "down")
     speech_bubble(draw, (400, 120, 200, 90), "Show yourself!", "jagged", "left")
     
     # Thought bubble
     speech_bubble(draw, (650, 200, 180, 100), "This feels dangerous...", "cloud", "down")
     
+    # NEW: Using new bubble types
+    speech_bubble(draw, (100, 300, 180, 100), "I love you!", "heart", "down")
+    speech_bubble(draw, (350, 280, 200, 120), "IMPOSSIBLE!!", "spiky", "up")
+    speech_bubble(draw, (600, 350, 200, 100), "By the gods...", "glow", "left")
+    speech_bubble(draw, (850, 300, 200, 120), "Must... kill...", "scratchy", "down")
+    
     # Internal monologue
-    narrator_dark(draw, (50, 350, 350, 80), "Little did she know, danger was approaching...")
+    narrator_dark(draw, (50, 500, 350, 80), "Little did she know, danger was approaching...")
     
     # Nervous speech
-    speech_bubble(draw, (500, 400, 200, 80), "I should run...", "wavy", "up")
+    speech_bubble(draw, (500, 520, 200, 80), "I should run...", "wavy", "up")
     
     # Sound effect area
-    narrator_borderless(draw, (700, 450, 200, 50), "CRACK!")
+    narrator_borderless(draw, (800, 500, 200, 50), "CRACK!")
     
     # Flashback narration
-    narrator_dashed(draw, (100, 550, 300, 80), "She remembered her father's warning...")
+    narrator_dashed(draw, (100, 650, 300, 80), "She remembered her father's warning...")
     
     img.save("examples/comic_panel_demo.png")
     print("Saved: examples/comic_panel_demo.png")

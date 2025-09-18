@@ -5,7 +5,14 @@ This library provides functions to create various types of speech bubbles and na
 boxes commonly used in manhwa, manga, and comics.
 """
 
-from .speech_bubbles import speech_bubble, draw_tail
+from .speech_bubbles import (
+    speech_bubble, 
+    draw_tail, 
+    bubble_heart, 
+    bubble_spiky, 
+    bubble_glow, 
+    bubble_scratchy
+)
 from .narrators import (
     narrator_plain,
     narrator_borderless, 
@@ -14,13 +21,17 @@ from .narrators import (
     narrator_wavy
 )
 
-__version__ = "1.0.1"
+__version__ = "1.1.0"
 __author__ = "Ihor Oderii"
 __email__ = "ihor.oderii@gmail.com"
 
 __all__ = [
     'speech_bubble',
     'draw_tail',
+    'bubble_heart',
+    'bubble_spiky', 
+    'bubble_glow',
+    'bubble_scratchy',
     'narrator_plain',
     'narrator_borderless',
     'narrator_dashed', 
