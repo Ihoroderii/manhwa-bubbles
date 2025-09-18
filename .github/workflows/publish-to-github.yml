@@ -41,7 +41,7 @@ jobs:
         echo "Package built successfully"
     
     - name: Upload package artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: github-package-distributions
         path: dist/
