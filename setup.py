@@ -6,12 +6,12 @@ with open("README.md", "r", encoding="utf-8") as fh:
 setup(
     name="manhwa-bubbles",
     version="1.0.0",
-    author="Your Name",
-    author_email="your.email@example.com",
+    author="Ihor Oderii",
+    author_email="ihor.oderii@gmail.com",
     description="A Python library for creating manhwa-style speech bubbles and narration boxes",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/yourusername/manhwa-bubbles",
+    url="https://github.com/ihoroderii/manhwa-bubbles",
     packages=find_packages(),
     classifiers=[
         "Programming Language :: Python :: 3",
@@ -28,7 +28,7 @@ setup(
     ],
     keywords="manhwa, comics, speech bubbles, graphics, PIL, drawing",
     project_urls={
-        "Bug Reports": "https://github.com/yourusername/manhwa-bubbles/issues",
-        "Source": "https://github.com/yourusername/manhwa-bubbles",
+        "Bug Reports": "https://github.com/ihoroderii/manhwa-bubbles/issues",
+        "Source": "https://github.com/ihoroderii/manhwa-bubbles",
     },
 )
