@@ -14,7 +14,7 @@ from .narrators import (
     narrator_wavy
 )
 
-__version__ = "1.0.0"
+__version__ = "1.0.1"
 __author__ = "Ihor Oderii"
 __email__ = "ihor.oderii@gmail.com"
 
