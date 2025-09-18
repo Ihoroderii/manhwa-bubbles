@@ -1,0 +1,7 @@
+include README.md
+include LICENSE
+include MANIFEST.in
+recursive-include manhwa_bubbles *.py
+recursive-include examples *.py
+global-exclude __pycache__
+global-exclude *.py[co]
