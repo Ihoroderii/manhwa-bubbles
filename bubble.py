@@ -1,63 +1,122 @@
-from PIL import Image, ImageDraw, ImageFont
-import math
+import cairo, math
 
-def bubble_heart(draw, xy, text):
-    """Heart-shaped bubble (romantic)."""
-    x, y, w, h = xy
-    points = []
-    for t in range(0, 360, 5):
-        rad = math.radians(t)
-        px = x + w//2 + int(16*math.sin(rad)**3 * (w/20))
-        py = y + h//2 - int((13*math.cos(rad) - 5*math.cos(2*rad) - 2*math.cos(3*rad) - math.cos(4*rad)) * (h/20))
-        points.append((px, py))
-    draw.polygon(points, fill="white", outline="red", width=3)
-    font = ImageFont.load_default()
-    draw.text((x+w//3, y+h//3), text, font=font, fill="red")
+WIDTH, HEIGHT = 500, 400
+surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, WIDTH, HEIGHT)
+ctx = cairo.Context(surface)
 
-def bubble_spiky(draw, xy, text):
-    """Spiky flame-like bubble (rage)."""
-    x, y, w, h = xy
-    points = []
-    num_points = 40
-    for i in range(num_points):
-        angle = 2*math.pi*i/num_points
-        r = (w//2) + (20 if i % 2 == 0 else 5)
-        px = x+w//2 + int(r*math.cos(angle))
-        py = y+h//2 + int(r*math.sin(angle))
-        points.append((px, py))
-    draw.polygon(points, fill="white", outline="black")
-    font = ImageFont.load_default()
-    draw.text((x+w//3, y+h//3), text, font=font, fill="black")
+# Background
+ctx.set_source_rgb(1, 1, 1)
+ctx.paint()
 
-def bubble_glow(draw, xy, text):
-    """Bubble with glowing aura (magic/divine)."""
-    x, y, w, h = xy
-    for r in range(0, 20, 4):
-        draw.ellipse((x-r, y-r, x+w+r, y+h+r), outline="yellow", width=2)
-    draw.ellipse((x, y, x+w, y+h), fill="white", outline="gold", width=3)
-    font = ImageFont.load_default()
-    draw.text((x+10, y+10), text, font=font, fill="black")
+# Ellipse parameters
+cx, cy = 250, 200   # center
+rx, ry = 150, 100   # radii
 
-def bubble_scratchy(draw, xy, text):
-    """Scratchy/rough border bubble (madness/creepy)."""
-    x, y, w, h = xy
-    for i in range(100):
-        px1 = x + int(math.cos(i)*w/2) + w//2
-        py1 = y + int(math.sin(i)*h/2) + h//2
-        px2 = px1 + (math.sin(i*3)*10)
-        py2 = py1 + (math.cos(i*5)*10)
-        draw.line((px1, py1, px2, py2), fill="black", width=1)
-    draw.rectangle((x, y, x+w, y+h), fill="white")
-    font = ImageFont.load_default()
-    draw.text((x+10, y+10), text, font=font, fill="black")
+# Variable stroke thickness function
+def stroke_width(theta):
+    # Thin at top, thick at bottom
+    return 3 + 6 * (0.5 + 0.5 * math.sin(theta))
+
+# Tail placement
+tail_angle = math.pi/2   # bottom (90°)
+tail_width = 0.5         # radians: size of gap
+
+# Compute ellipse outline with gap for tail
+outer, inner = [], []
+steps = 300
+for i in range(steps+1):
+    theta = 2*math.pi*i/steps
+    # skip arc where tail attaches
+    if tail_angle-tail_width/2 < theta < tail_angle+tail_width/2:
+        continue
+
+    x = cx + rx*math.cos(theta)
+    y = cy + ry*math.sin(theta)
+
+    # Normal vector
+    nx = math.cos(theta) / rx
+    ny = math.sin(theta) / ry
+    norm = math.sqrt(nx*nx + ny*ny)
+    nx, ny = nx/norm, ny/norm
+
+    w = stroke_width(theta)
+    outer.append((x + nx*w/2, y + ny*w/2))
+    inner.append((x - nx*w/2, y - ny*w/2))
+
+# Draw ellipse (as filled polygon with variable width)
+ctx.set_source_rgb(0, 0, 0)
+ctx.move_to(*outer[0])
+for p in outer:
+    ctx.line_to(*p)
+for p in reversed(inner):
+    ctx.line_to(*p)
+ctx.close_path()
+ctx.fill()
+
+# --- Draw smoother, natural tail ---
+tail_tip = (cx, cy + ry + 70)      # tip of tail
+left_attach = (cx - 25, cy + ry)   # left base of gap
+right_attach = (cx + 25, cy + ry)  # right base of gap
+
+ctx.move_to(*left_attach)
+ctx.curve_to(cx - 15, cy + ry + 20, cx - 10, cy + ry + 40, *tail_tip)
+ctx.curve_to(cx + 10, cy + ry + 40, cx + 15, cy + ry + 20, *right_attach)
+ctx.close_path()
+
+# Fill white
+ctx.set_source_rgb(1, 1, 1)
+ctx.fill_preserve()
+
+# Outline black
+ctx.set_source_rgb(0, 0, 0)
+ctx.set_line_width(2)
+ctx.stroke()
+
+# Save
+surface.write_to_png("ellipse_natural_tail.png")
+print("✅ Saved bubble with natural white tail -> ellipse_natural_tail.png")
 
 
-img = Image.new("RGB", (900, 600), "lightgray")
-draw = ImageDraw.Draw(img)
+import gi
+gi.require_version("Pango", "1.0")
+gi.require_version("PangoCairo", "1.0")
+from gi.repository import Pango, PangoCairo
+import cairo
 
-bubble_heart(draw, (50, 50, 200, 150), "Love~")
-bubble_spiky(draw, (300, 50, 200, 150), "ANGRY!!")
-bubble_glow(draw, (550, 50, 200, 150), "Divine voice")
-bubble_scratchy(draw, (200, 300, 250, 150), "Insane thoughts...")
+surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, 400, 300)
+ctx = cairo.Context(surface)
 
-img.show()
+layout = PangoCairo.create_layout(ctx)
+fontdesc = Pango.FontDescription("Sans 20")
+layout.set_font_description(fontdesc)
+layout.set_width(200 * Pango.SCALE)  # wrap at 200px
+layout.set_text("This is a long piece of text that wraps automatically inside the bubble.")
+
+ctx.set_source_rgb(0, 0, 0)
+ctx.move_to(100, 100)
+PangoCairo.show_layout(ctx, layout)
+
+surface.write_to_png("text_wrapped.png")
+
+import cairo
+
+WIDTH, HEIGHT = 500, 300
+surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, WIDTH, HEIGHT)
+ctx = cairo.Context(surface)
+
+# White background
+ctx.set_source_rgb(1, 1, 1)
+ctx.paint()
+
+# 👉 Use Bubble Sans (installed .otf)
+ctx.select_font_face("Bubble Sans", cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_NORMAL)
+ctx.set_font_size(36)
+
+# Draw text
+ctx.set_source_rgb(0, 0, 0)  # black text
+ctx.move_to(50, 150)
+ctx.show_text("I WON'T FORGIVE YOU!")
+
+surface.write_to_png("bubble_sans_test.png")
+print("✅ Saved text with Bubble Sans -> bubble_sans_test.png")
+
