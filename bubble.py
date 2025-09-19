@@ -4,9 +4,16 @@ WIDTH, HEIGHT = 500, 400
 surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, WIDTH, HEIGHT)
 ctx = cairo.Context(surface)
 
-# Background
-ctx.set_source_rgb(1, 1, 1)
-ctx.paint()
+# ------------------------------------------------------------------
+# Configuration flags
+# ------------------------------------------------------------------
+PAINT_BACKGROUND = False   # Set True if you still want an opaque white rectangle
+FILL_TAIL_WHITE   = True    # Tail interior fill (set False to keep entirely transparent)
+
+# Optional background paint (kept conditional so PNG can be transparent)
+if PAINT_BACKGROUND:
+    ctx.set_source_rgba(1, 1, 1, 1)
+    ctx.paint()
 
 # Ellipse parameters
 cx, cy = 250, 200   # center
@@ -63,11 +70,16 @@ ctx.curve_to(cx - 15, cy + ry + 20, cx - 10, cy + ry + 40, *tail_tip)
 ctx.curve_to(cx + 10, cy + ry + 40, cx + 15, cy + ry + 20, *right_attach)
 ctx.close_path()
 
-# Fill white
-ctx.set_source_rgb(1, 1, 1)
-ctx.fill_preserve()
+if FILL_TAIL_WHITE:
+    # Fill white tail interior then outline
+    ctx.set_source_rgb(1, 1, 1)
+    ctx.fill_preserve()
+else:
+    # Just outline (tail interior remains transparent)
+    ctx.set_source_rgba(0, 0, 0, 0)
+    ctx.new_path()  # discard fill
 
-# Outline black
+# Outline black (tail border)
 ctx.set_source_rgb(0, 0, 0)
 ctx.set_line_width(2)
 ctx.stroke()
@@ -77,46 +89,5 @@ surface.write_to_png("ellipse_natural_tail.png")
 print("✅ Saved bubble with natural white tail -> ellipse_natural_tail.png")
 
 
-import gi
-gi.require_version("Pango", "1.0")
-gi.require_version("PangoCairo", "1.0")
-from gi.repository import Pango, PangoCairo
-import cairo
-
-surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, 400, 300)
-ctx = cairo.Context(surface)
-
-layout = PangoCairo.create_layout(ctx)
-fontdesc = Pango.FontDescription("Sans 20")
-layout.set_font_description(fontdesc)
-layout.set_width(200 * Pango.SCALE)  # wrap at 200px
-layout.set_text("This is a long piece of text that wraps automatically inside the bubble.")
-
-ctx.set_source_rgb(0, 0, 0)
-ctx.move_to(100, 100)
-PangoCairo.show_layout(ctx, layout)
-
-surface.write_to_png("text_wrapped.png")
-
-import cairo
-
-WIDTH, HEIGHT = 500, 300
-surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, WIDTH, HEIGHT)
-ctx = cairo.Context(surface)
-
-# White background
-ctx.set_source_rgb(1, 1, 1)
-ctx.paint()
-
-# 👉 Use Bubble Sans (installed .otf)
-ctx.select_font_face("Bubble Sans", cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_NORMAL)
-ctx.set_font_size(36)
-
-# Draw text
-ctx.set_source_rgb(0, 0, 0)  # black text
-ctx.move_to(50, 150)
-ctx.show_text("I WON'T FORGIVE YOU!")
-
-surface.write_to_png("bubble_sans_test.png")
-print("✅ Saved text with Bubble Sans -> bubble_sans_test.png")
+# (Removed unrelated text wrapping and font test demos to keep output focused.)
 
