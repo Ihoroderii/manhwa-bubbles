@@ -13,6 +13,9 @@ from .speech_bubbles import (
     bubble_glow, 
     bubble_scratchy
 )
+from .organic_overlap import (
+    generate_overlapping_bubble,
+)
 from .narrators import (
     narrator_plain,
     narrator_borderless, 
@@ -37,4 +40,5 @@ __all__ = [
     'narrator_dashed', 
     'narrator_dark',
     'narrator_wavy'
+    ,'generate_overlapping_bubble'
 ]
