@@ -6,9 +6,13 @@ import random
 # Configuration flags for minimal (ink-only) manga bubble style
 # -------------------------------------------------------------
 TRANSPARENT_CANVAS = True          # If True, don't paint a background
-RECTANGLE_FILL_IN_MINIMAL = False  # If False, no interior rectangle fill when show_full_ovals=False
+RECTANGLE_FILL_IN_MINIMAL = False  # Don't fill whole rectangle in minimal mode
+FILL_GAPS_ONLY = True              # New: fill only interior regions between ovals
 DRAW_TEXT = False                  # Suppress text to keep interior visually clear
 INK_COLOR = (0, 0, 0, 1)
+
+# Style presets (we add a 'laugh' style focusing on frenetic, bouncy perimeter)
+SUPPORTED_STYLES = {"varied", "organic", "laugh"}
 
 # Geometry control constants
 # How far (inward) each oval should penetrate past the rectangle edge (as fraction of smaller half dimension)
@@ -37,11 +41,14 @@ def create_overlapping_circles_square(ctx, cx, cy, base_width, base_height,
     
     # Generate overlapping circles for each side
     all_circles = generate_side_circles(cx, cy, half_width, half_height, circle_style)
+
+    # Enforce that corner-adjacent ovals actually overlap (e.g. right with bottom at bottom-right corner)
+    enforce_corner_overlaps(all_circles, cx, cy, half_width, half_height)
     
     # Draw the main rectangle FIRST (fill only if we plan to hide covered border portions)
     draw_base_rectangle(ctx, cx, cy, base_width, base_height,
                         stroke=show_full_ovals,
-                        fill=show_full_ovals or RECTANGLE_FILL_IN_MINIMAL)
+                        fill=show_full_ovals and RECTANGLE_FILL_IN_MINIMAL)
     
     # BEFORE clipping: Draw connection lines to outside intersections
     draw_outside_intersection_connections(ctx, all_circles, cx, cy, half_width, half_height)
@@ -49,12 +56,20 @@ def create_overlapping_circles_square(ctx, cx, cy, base_width, base_height,
     # Optionally draw all circles (full ovals) or skip to only show emphasized interior arcs
     if show_full_ovals:
         draw_overlapping_circles(ctx, all_circles, cx, cy, base_width, base_height)
+
+    # Extra laugh style embellishments (after circles so we can sit beneath emphasized arcs if minimal mode)
+    if circle_style == "laugh":
+        draw_laugh_energy_lines(ctx, cx, cy, half_width, half_height, all_circles)
     
     # Draw only the parts of rectangle border that are NOT covered by circles
     if show_full_ovals:
         # Only show remaining rectangle border in full mode; in minimal mode the rectangle border is defined by arcs only
         draw_uncrossed_rectangle_border(ctx, all_circles, cx, cy, half_width, half_height)
     
+    # If minimal mode and gap fill requested, paint only the gaps first
+    if not show_full_ovals and FILL_GAPS_ONLY:
+        fill_rectangle_gaps_only(ctx, all_circles, cx, cy, half_width, half_height)
+
     # Find and emphasize only the part of circle borders that are INSIDE the rectangle
     emphasize_border_crossing_pixels(ctx, all_circles, cx, cy, half_width, half_height)
     
@@ -104,6 +119,88 @@ def generate_side_circles(cx, cy, half_width, half_height, style):
     
     return all_circles
 
+def enforce_corner_overlaps(all_circles, cx, cy, half_width, half_height):
+    """Post-process circles so each rectangle corner has an overlap between its adjacent side ovals.
+    This addresses cases where (for example) the single right-side oval failed to cross the bottom-right horizontal oval.
+
+    Strategy (approximate, lightweight):
+    1. Group circles by side.
+    2. For each corner, pick the circle on each side closest to that corner.
+    3. Check an axis-aligned overlap approximation: we require both |dx| <= rx1+rx2 - eps and |dy| <= ry1+ry2 - eps.
+       (True ellipse intersection is more complex; this heuristic suffices for guaranteeing visible crossing arcs.)
+    4. If missing along an axis, enlarge the *smaller* radius on that axis just enough (with a tiny margin) to create overlap.
+       We keep adjustments minimal to preserve sharp interior gaps.
+    5. Perform a single pass; cumulative adjustments on a single short-side oval allow it to meet both top & bottom if needed.
+    """
+
+    # Group by side
+    by_side = { 'top': [], 'right': [], 'bottom': [], 'left': [] }
+    for c in all_circles:
+        if c['side'] in by_side:
+            by_side[c['side']].append(c)
+
+    if not all(by_side.values()):
+        # If any side missing (shouldn't happen), bail out
+        return
+
+    # Helpers to select corner candidates
+    def closest_top_left():
+        top = min(by_side['top'], key=lambda c: c['x']) if by_side['top'] else None
+        left = min(by_side['left'], key=lambda c: c['y']) if by_side['left'] else None  # smaller y is toward top
+        return top, left
+    def closest_top_right():
+        top = max(by_side['top'], key=lambda c: c['x']) if by_side['top'] else None
+        right = min(by_side['right'], key=lambda c: c['y']) if by_side['right'] else None
+        return top, right
+    def closest_bottom_right():
+        bottom = max(by_side['bottom'], key=lambda c: c['x']) if by_side['bottom'] else None
+        right = max(by_side['right'], key=lambda c: c['y']) if by_side['right'] else None  # larger y is toward bottom
+        return bottom, right
+    def closest_bottom_left():
+        bottom = min(by_side['bottom'], key=lambda c: c['x']) if by_side['bottom'] else None
+        left = max(by_side['left'], key=lambda c: c['y']) if by_side['left'] else None
+        return bottom, left
+
+    corners = [closest_top_left(), closest_top_right(), closest_bottom_right(), closest_bottom_left()]
+
+    MARGIN = 2.0  # pixels of guaranteed overlap margin per axis
+
+    for a, b in corners:
+        if not a or not b:
+            continue
+        # Axis deltas
+        dx = abs(a['x'] - b['x'])
+        dy = abs(a['y'] - b['y'])
+        sum_rx = a['rx'] + b['rx']
+        sum_ry = a['ry'] + b['ry']
+
+        # If no horizontal overlap, enlarge the smaller rx just enough
+        if dx > sum_rx - MARGIN:
+            needed = dx + MARGIN - sum_rx
+            if a['rx'] < b['rx']:
+                a['rx'] += needed
+            else:
+                b['rx'] += needed
+
+        # Recompute after potential rx change
+        dx = abs(a['x'] - b['x'])
+        sum_rx = a['rx'] + b['rx']
+
+        # If no vertical overlap, enlarge the smaller ry
+        if dy > sum_ry - MARGIN:
+            needed = dy + MARGIN - sum_ry
+            if a['ry'] < b['ry']:
+                a['ry'] += needed
+            else:
+                b['ry'] += needed
+
+        # Optional: very small inward center nudges toward corner to emphasize intersection region inside rectangle
+        # (Keep minimal to avoid altering interior negative space.)
+        # We only nudge if overlap was adjusted.
+        # Determine corner direction by relative positions to rectangle center.
+        # For simplicity we skip additional logic; radii enlargement suffices.
+
+
 def generate_circles_for_side(start_x, start_y, end_x, end_y, side_name, style,
                               num_circles, half_width, half_height, start_id):
     """Generate ovals for one side with these RULES:
@@ -125,12 +222,41 @@ def generate_circles_for_side(start_x, start_y, end_x, end_y, side_name, style,
     def r(a, b):
         return random.uniform(a, b)
     
+    # Laughter style tweak: increase count & add random micro-bulges
+    if style == "laugh":
+        # If rectangle is long on this side, allow 3 bulges, else 2, else keep 1 for very short
+        long_threshold = 140  # pixels overall side length
+        side_len_pixels = (half_width * 2) if is_horizontal else (half_height * 2)
+        if side_len_pixels > long_threshold:
+            num_circles = max(num_circles, 3)
+        else:
+            num_circles = max(num_circles, 2)
+
     for i in range(num_circles):
         # Parameter t along side: single -> center, double -> near corners
         if num_circles == 1:
-            t = 0.5
+            # Center with small random drift to vary interior negative space
+            t = 0.5 + r(-0.08, 0.08)
         else:
-            t = 0.2 if i == 0 else 0.8
+            if style == "laugh" and num_circles >= 3:
+                # Distribute 3 with stronger jitter, center one purposely slightly off-center
+                if i == 0:
+                    base_t = 0.16
+                elif i == 1:
+                    base_t = 0.50 + r(-0.06, 0.06)
+                else:
+                    base_t = 0.84
+                t = base_t + r(-0.06, 0.065)
+                t = _clamp(t, 0.06, 0.94)
+            elif style == "laugh" and num_circles == 2:
+                base_t = 0.22 if i == 0 else 0.78
+                t = base_t + r(-0.06, 0.06)
+                t = _clamp(t, 0.07, 0.93)
+            else:
+                # Corner-biased with variation to change overlap shape
+                base_t = 0.18 if i == 0 else 0.82
+                t = base_t + r(-0.05, 0.05)
+                t = _clamp(t, 0.08, 0.92)
 
         # Base coordinate on the side line
         side_x = start_x + t * (end_x - start_x)
@@ -149,16 +275,40 @@ def generate_circles_for_side(start_x, start_y, end_x, end_y, side_name, style,
         # Base radii strategy:
         # Horizontal sides: rx wider for corner overlap, ry shallow to avoid meeting opposite side.
         # Vertical sides: ry taller for corner overlap, rx narrow to avoid meeting opposite side.
+        corner_bias = (num_circles >= 2 and (t < 0.3 or t > 0.7))
         if is_horizontal:
-            # half_width is available; want overlap between two top ovals if present
-            rx = (half_width * (0.78 if num_circles == 1 else 0.52)) * r(0.95, 1.05)
-            ry = (half_height * 0.32) * r(0.9, 1.1)
+            base_span = 0.74 if num_circles == 1 else 0.46 + r(-0.025, 0.03)
+            if corner_bias:
+                base_span *= 0.9  # shrink corner ovals to sharpen inner corner gap
+            rx = (half_width * base_span) * r(0.94, 1.05)
+            ry_base = 0.28 + r(-0.025, 0.035)
+            if corner_bias:
+                ry_base *= 0.9
+            ry = (half_height * ry_base) * r(0.92, 1.08)
         else:
-            ry = (half_height * (0.78 if num_circles == 1 else 0.52)) * r(0.95, 1.05)
-            rx = (half_width * 0.32) * r(0.9, 1.1)
+            base_span = 0.74 if num_circles == 1 else 0.46 + r(-0.025, 0.03)
+            if corner_bias:
+                base_span *= 0.9
+            ry = (half_height * base_span) * r(0.94, 1.05)
+            rx_base = 0.28 + r(-0.025, 0.035)
+            if corner_bias:
+                rx_base *= 0.9
+            rx = (half_width * rx_base) * r(0.92, 1.08)
+
+        # Laugh style: favor smaller, punchier bumps (reduce radii, then add random micro-swell)
+        if style == "laugh":
+            scale_down = 0.78 if num_circles >= 3 else 0.85
+            rx *= scale_down * r(0.95, 1.08)
+            ry *= scale_down * r(0.95, 1.08)
+            # Slight random elliptical exaggeration for energy
+            if random.random() < 0.4:
+                if is_horizontal:
+                    ry *= r(1.05, 1.18)
+                else:
+                    rx *= r(1.05, 1.18)
 
         # Ensure same-side overlap (two ovals): enlarge along-edge radius if needed
-        if num_circles == 2:
+        if num_circles >= 2:
             side_full_length = (half_width * 2) if is_horizontal else (half_height * 2)
             center_sep = (0.8 - 0.2) * side_full_length  # distance between centers
             min_overlap_pixels = (HORIZONTAL_MIN_OVERLAP_FRAC if is_horizontal else VERTICAL_MIN_OVERLAP_FRAC) * side_full_length
@@ -175,17 +325,29 @@ def generate_circles_for_side(start_x, start_y, end_x, end_y, side_name, style,
                     ry *= scale
 
         # Corner growth for corner ovals (slight) to guarantee perpendicular crossing
-        if num_circles == 2 and (t < 0.25 or t > 0.75):
+        if num_circles >= 2 and (t < 0.25 or t > 0.75):
+            # Slight growth removed for corner sharpness; keep minimal organic jitter
+            jitter_scale = 1 + r(-0.01, 0.015)
             if is_horizontal:
-                rx *= 1.05
+                rx *= jitter_scale
             else:
-                ry *= 1.05
+                ry *= jitter_scale
 
         # Inward penetration: tuned per orientation (horizontal needs shallower to keep interior open)
         if is_horizontal:
-            inward_penetration = (ry) * 0.45
+            inward_penetration = (ry) * (0.38 + r(-0.035, 0.04))
+            if corner_bias:
+                inward_penetration *= 0.85
         else:
-            inward_penetration = (rx) * 0.55
+            inward_penetration = (rx) * (0.48 + r(-0.04, 0.05))
+            if corner_bias:
+                inward_penetration *= 0.85
+
+        if style == "laugh":
+            # Pull laughs slightly further outwards to keep interior loud/airy
+            outward_relief = 0.9  # reduce penetration depth
+            circle_penetration_adjust = outward_relief
+            inward_penetration *= circle_penetration_adjust
         circle_x = side_x - normal_x * inward_penetration
         circle_y = side_y - normal_y * inward_penetration
 
@@ -204,6 +366,32 @@ def generate_circles_for_side(start_x, start_y, end_x, end_y, side_name, style,
         })
     
     return circles
+
+def draw_laugh_energy_lines(ctx, cx, cy, half_width, half_height, circles):
+    """Add radiating short energy ticks around exterior to suggest explosive laughter.
+    Drawn very lightly so they don't dominate the ink arcs."""
+    ctx.save()
+    ctx.set_source_rgba(0,0,0,0.65)
+    ctx.set_line_width(2.0)
+    num_rays = 18
+    # Radius just outside bounding box of circles
+    outer_rx = half_width + 24
+    outer_ry = half_height + 24
+    for i in range(num_rays):
+        ang = (2*math.pi) * (i / num_rays) + random.uniform(-0.05,0.05)
+        # Skip some rays randomly for irregularity
+        if random.random() < 0.18:
+            continue
+        base_len = random.uniform(10, 24)
+        # Start slightly outside rectangle ellipse
+        sx = cx + math.cos(ang) * (outer_rx + random.uniform(-4,4))
+        sy = cy + math.sin(ang) * (outer_ry + random.uniform(-4,4))
+        ex = sx + math.cos(ang) * base_len
+        ey = sy + math.sin(ang) * base_len
+        ctx.move_to(sx, sy)
+        ctx.line_to(ex, ey)
+    ctx.stroke()
+    ctx.restore()
 
 def draw_overlapping_circles(ctx, circles, cx, cy, base_width, base_height):
     """Draw all circles with overlapping effect"""
@@ -308,6 +496,28 @@ def draw_base_rectangle(ctx, cx, cy, width, height, stroke=True, fill=True):
         ctx.stroke()
     else:
         ctx.new_path()
+
+def fill_rectangle_gaps_only(ctx, all_circles, cx, cy, half_width, half_height):
+    """Restore original behavior: fill entire rectangle white then CLEAR each oval interior,
+    leaving all gap regions (possibly multiple)."""
+    ctx.save()
+    # Paint full rectangle white
+    ctx.set_source_rgba(1,1,1,1)
+    ctx.rectangle(cx - half_width, cy - half_height, half_width*2, half_height*2)
+    ctx.fill()
+
+    # Punch out ovals
+    ctx.set_operator(cairo.OPERATOR_CLEAR)
+    for circle in all_circles:
+        ctx.save()
+        ctx.translate(circle['x'], circle['y'])
+        ctx.scale(circle['rx'], circle['ry'])
+        ctx.arc(0, 0, 1, 0, 2*math.pi)
+        ctx.restore()
+        ctx.fill()
+
+    ctx.set_operator(cairo.OPERATOR_OVER)
+    ctx.restore()
 
 def find_circle_intersections_outside_rect(all_circles, rect_left, rect_right, rect_top, rect_bottom):
     """Find intersection points between circles that are OUTSIDE the rectangle"""
@@ -1214,7 +1424,7 @@ def create_overlapping_demo():
         ctx.set_source_rgb(0.97, 0.97, 0.99)
         ctx.paint()
     
-    # Single example - organic style with good crossing
+    # Single example - organic style with good crossing (casual variation)
     create_overlapping_circles_square(ctx, 250, 200, 180, 120, "", "organic", show_full_ovals=False)
     
     # (Title and subtitle removed as per request)
@@ -1222,6 +1432,44 @@ def create_overlapping_demo():
     surface.write_to_png("overlapping_circles_squares.png")
     print("✅ Overlapping circles squares saved as 'overlapping_circles_squares.png'")
 
+def create_multiple_casual_examples(count=5, seed=None, width=420, height=320):
+    """Generate several bubble examples each with casual varied negative-space arcs.
+    Saves files: bubble_casual_1.png ... bubble_casual_n.png"""
+    if seed is not None:
+        random.seed(seed)
+    for i in range(1, count+1):
+        surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, width, height)
+        ctx = cairo.Context(surface)
+        if not TRANSPARENT_CANVAS:
+            ctx.set_source_rgb(1,1,1)
+            ctx.paint()
+        # Vary rectangle size slightly
+        base_w = 170 + random.uniform(-15, 15)
+        base_h = 115 + random.uniform(-12, 12)
+        # Slight center jitter
+        cx = width/2 + random.uniform(-8, 8)
+        cy = height/2 + random.uniform(-6, 6)
+        create_overlapping_circles_square(ctx, cx, cy, base_w, base_h, "", "organic", show_full_ovals=False)
+        fname = f"bubble_casual_{i}.png"
+        surface.write_to_png(fname)
+        print(f"💠 Saved {fname}")
+
+def create_laugh_demo(seed=123, width=420, height=320):
+    """Generate a single 'laugh' style bubble example (minimal arcs mode)."""
+    random.seed(seed)
+    surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, width, height)
+    ctx = cairo.Context(surface)
+    if not TRANSPARENT_CANVAS:
+        ctx.set_source_rgb(1,1,1)
+        ctx.paint()
+    cx, cy = width/2, height/2
+    create_overlapping_circles_square(ctx, cx, cy, 190, 130, "", "laugh", show_full_ovals=False)
+    out = "bubble_laugh.png"
+    surface.write_to_png(out)
+    print(f"😂 Saved laugh bubble '{out}'")
+
 if __name__ == "__main__":
+    # Default run: produce standard demo plus a laugh bubble
     create_overlapping_demo()
-    print("🔴 Created squares with overlapping circles! Organic bubble effects! ⭕✨")
+    create_laugh_demo()
+    print("🔴 Created squares with overlapping circles + laugh bubble! ⭕✨😂")
