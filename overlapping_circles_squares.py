@@ -10,6 +10,7 @@ RECTANGLE_FILL_IN_MINIMAL = False  # Don't fill whole rectangle in minimal mode
 FILL_GAPS_ONLY = True              # New: fill only interior regions between ovals
 DRAW_TEXT = False                  # Suppress text to keep interior visually clear
 INK_COLOR = (0, 0, 0, 1)
+EMPHASIZE_INTERIOR_ARCS = False  # Disabled to remove interior emphasized oval arc strokes
 
 # Style presets (we add a 'laugh' style focusing on frenetic, bouncy perimeter)
 SUPPORTED_STYLES = {"varied", "organic", "laugh"}
@@ -71,7 +72,8 @@ def create_overlapping_circles_square(ctx, cx, cy, base_width, base_height,
         fill_rectangle_gaps_only(ctx, all_circles, cx, cy, half_width, half_height)
 
     # Find and emphasize only the part of circle borders that are INSIDE the rectangle
-    emphasize_border_crossing_pixels(ctx, all_circles, cx, cy, half_width, half_height)
+    if EMPHASIZE_INTERIOR_ARCS:
+        emphasize_border_crossing_pixels(ctx, all_circles, cx, cy, half_width, half_height)
     
     # Add text
     if DRAW_TEXT and text:
@@ -409,17 +411,11 @@ def draw_overlapping_circles(ctx, circles, cx, cy, base_width, base_height):
         draw_single_circle(ctx, circle, cx, cy, base_width, base_height)
 
 def draw_single_circle(ctx, circle, cx, cy, base_width, base_height):
-    """Draw a single circle/oval with gradient"""
-    
-    # Save current state
+    """Draw a single circle/oval with gradient (no rotation)."""
     ctx.save()
-    
-    # Move to circle center and create ellipse
     ctx.translate(circle['x'], circle['y'])
     ctx.scale(circle['rx'], circle['ry'])
     ctx.arc(0, 0, 1, 0, 2 * math.pi)
-    
-    # Restore for gradient calculation
     ctx.restore()
     
     # Create gradient for this circle
@@ -496,6 +492,8 @@ def draw_base_rectangle(ctx, cx, cy, width, height, stroke=True, fill=True):
         ctx.stroke()
     else:
         ctx.new_path()
+
+## Circle-base drawing moved to overlapping_circles_circle.py
 
 def fill_rectangle_gaps_only(ctx, all_circles, cx, cy, half_width, half_height):
     """Restore original behavior: fill entire rectangle white then CLEAR each oval interior,
@@ -630,8 +628,6 @@ def find_crossing_border_segments(circle, rect_left, rect_right, rect_top, rect_
     
     for i in range(num_samples):
         angle = (2 * math.pi * i) / num_samples
-        
-        # Calculate point on circle perimeter
         px = cx + rx * math.cos(angle)
         py = cy + ry * math.sin(angle)
         
@@ -685,6 +681,8 @@ def find_crossing_border_segments(circle, rect_left, rect_right, rect_top, rect_
         crossing_segments.append(current_segment)
     
     return crossing_segments
+
+## Circle emphasis helper moved to overlapping_circles_circle.py
 
 def draw_crossing_border_emphasis(ctx, inside_segments):
     """Draw emphasis on border segments that are INSIDE the square with underlines"""
@@ -763,8 +761,6 @@ def find_border_crossing_pixels(circle, square_left, square_right, square_top, s
     
     for i in range(num_samples):
         angle = (2 * math.pi * i) / num_samples
-        
-        # Calculate point on circle perimeter
         px = cx + rx * math.cos(angle)
         py = cy + ry * math.sin(angle)
         
@@ -1240,19 +1236,16 @@ def find_uncrossed_edge_segments(edge_name, start_x, start_y, end_x, end_y, all_
     
     return uncovered_segments
 
+## Circle border drawing moved to overlapping_circles_circle.py
+
+## Radial circle helpers removed (not part of rectangle-focused module)
+
 def point_inside_circle(px, py, circle):
-    """Check if a point is inside a circle/ellipse"""
-    
     cx, cy = circle['x'], circle['y']
     rx, ry = circle['rx'], circle['ry']
-    
-    # Calculate distance to circle center in ellipse coordinates
     dx = (px - cx) / rx
     dy = (py - cy) / ry
-    distance_squared = dx*dx + dy*dy
-    
-    # Point is inside if distance <= 1 (for ellipse equation)
-    return distance_squared <= 1.0
+    return (dx*dx + dy*dy) <= 1.0
 
 def create_cloud_overlap_square(ctx, cx, cy, size, text="CLOUD!", density="medium"):
     """Create square with cloud-like overlapping circles"""
@@ -1468,8 +1461,11 @@ def create_laugh_demo(seed=123, width=420, height=320):
     surface.write_to_png(out)
     print(f"😂 Saved laugh bubble '{out}'")
 
+## Circle variant creation & demo moved to overlapping_circles_circle.py
+
+
 if __name__ == "__main__":
-    # Default run: produce standard demo plus a laugh bubble
+    # Rectangle-focused demos only (circle variant now in overlapping_circles_circle.py)
     create_overlapping_demo()
     create_laugh_demo()
-    print("🔴 Created squares with overlapping circles + laugh bubble! ⭕✨😂")
+    print("🔴 Created rectangle-based overlapping bubbles (circle variant separated).")
