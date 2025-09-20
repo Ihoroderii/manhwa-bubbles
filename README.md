@@ -10,6 +10,7 @@ A Python library for creating manhwa-style speech bubbles and narration boxes us
 ## Features
 
 - **Speech Bubbles**: Multiple bubble types including oval, rectangular, cloud (thought), jagged (shouting), wavy (nervous), black (dark/evil), heart (romantic), spiky (rage), glow (magic/divine), and scratchy (madness/creepy)
+- **Organic Overlapping Ovals (Cairo)**: Advanced manga/Manhwa style bubble with intersecting perimeter ovals (supports a laugh variant with energetic rays)
 - **Narration Boxes**: Various narrator styles including plain, borderless, dashed, dark, and wavy borders
 - **Customizable**: Adjustable positioning, sizing, and tail directions
 - **Easy to Use**: Simple API with clear function signatures
@@ -107,6 +108,50 @@ Creates narration boxes with different styles.
 ## Examples
 
 See `examples/demo.py` for comprehensive usage examples.
+
+### Organic Overlapping Bubble (Cairo)
+
+This additional style uses PyCairo for precise overlapping elliptical arcs with an optional minimal interior-ink mode.
+
+Install dependency:
+
+```bash
+pip install pycairo
+```
+
+Basic usage:
+
+```python
+from manhwa_bubbles import generate_overlapping_bubble
+
+surface, ctx = generate_overlapping_bubble(width=200, height=130, show_full_ovals=False)
+surface.write_to_png("organic_minimal.png")
+```
+
+Show full ovals (debug/design view):
+
+```python
+surface, ctx = generate_overlapping_bubble(220, 150, show_full_ovals=True)
+surface.write_to_png("organic_full.png")
+```
+
+Laugh version (adds energetic rays and denser smaller bumps):
+
+```python
+surface, ctx = generate_overlapping_bubble(190, 130, style='laugh', show_full_ovals=False)
+surface.write_to_png("laugh_bubble.png")
+```
+
+Adjust flags (optional):
+
+```python
+import manhwa_bubbles.organic_overlap as oo
+oo.FILL_GAPS_ONLY = True          # Fill rectangle then punch out ovals (creates gap network)
+oo.DRAW_EMPHASIS_ARCS = True      # Draw only interior arc strokes
+oo.DRAW_LAUGH_ENERGY = False      # Disable laugh energy rays
+```
+
+Returned `surface` is a Cairo `ImageSurface`; you can composite or convert to Pillow via PNG bytes if needed.
 
 ## Requirements
 
