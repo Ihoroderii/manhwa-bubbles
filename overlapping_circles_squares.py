@@ -32,7 +32,8 @@ def _clamp(v, lo, hi):
     return lo if v < lo else hi if v > hi else v
 
 def create_overlapping_circles_square(ctx, cx, cy, base_width, base_height,
-                                      text="OVERLAP!", circle_style="varied", show_full_ovals=True):
+                                      text="OVERLAP!", circle_style="varied", show_full_ovals=True,
+                                      return_circles=False):
     """Create a rectangle with overlapping circles/ovals on all sides.
     If show_full_ovals is False, only the emphasized interior crossing segments are rendered (minimal manga style)."""
     
@@ -76,10 +77,12 @@ def create_overlapping_circles_square(ctx, cx, cy, base_width, base_height,
         emphasize_border_crossing_pixels(ctx, all_circles, cx, cy, half_width, half_height)
     
     # Add text
-    if DRAW_TEXT and text:
+    if DRAW_TEXT and text and not return_circles:
         draw_overlap_text(ctx, cx, cy, text)
     
     # Corner ellipses removed for cleaner look
+    if return_circles:
+        return all_circles
 
 def generate_side_circles(cx, cy, half_width, half_height, style):
     """Generate circles/ovals for each side of the rectangle with automatic oval count"""
