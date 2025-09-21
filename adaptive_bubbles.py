@@ -180,7 +180,8 @@ RADIAL_GENERATORS = {
 def adaptive_circle_bubble(text, variant='radial5', target_inner_padding=20,
                             canvas_size=(600,600), max_iterations=5, seed=1234,
                             max_panel_fraction=0.3, min_font_size=12,
-                            wrap=False, max_lines=2, ensure_inside=True, verify_attempts=8):
+                            wrap=False, max_lines=2, ensure_inside=True, verify_attempts=8,
+                            tail_target=None, tail_length_factor=0.55, tail_width_factor=0.28, tail_style='triangle'):
     random.seed(seed)
     width,height = canvas_size
     surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, width, height)
@@ -229,6 +230,38 @@ def adaptive_circle_bubble(text, variant='radial5', target_inner_padding=20,
     # Draw final bubble
     circles = gen(ctx, cx, cy, core_radius, text="", style='laugh', show_full_ovals=False, return_circles=True)
     fcx, fcy, fw, fh = find_free_bbox_circle(cx, cy, core_radius, circles, samples=140)
+    tail_points = None
+    if tail_target is not None:
+        tx, ty = tail_target
+        # direction vector from bubble center to tail target
+        dx = tx - cx; dy = ty - cy
+        dist = math.hypot(dx, dy) or 1.0
+        ux, uy = dx/dist, dy/dist
+        # base attach point on circle boundary
+        attach_x = cx + ux * core_radius
+        attach_y = cy + uy * core_radius
+        # perpendicular for width
+        px, py = -uy, ux
+        tail_len = core_radius * tail_length_factor
+        tail_w = core_radius * tail_width_factor
+        tip_x = attach_x + ux * tail_len
+        tip_y = attach_y + uy * tail_len
+        p1x = attach_x + px * tail_w * 0.5
+        p1y = attach_y + py * tail_w * 0.5
+        p2x = attach_x - px * tail_w * 0.5
+        p2y = attach_y - py * tail_w * 0.5
+        ctx.save()
+        ctx.set_source_rgba(1,1,1,1)
+        ctx.move_to(p1x, p1y)
+        ctx.line_to(p2x, p2y)
+        ctx.line_to(tip_x, tip_y)
+        ctx.close_path()
+        ctx.fill_preserve()
+        ctx.set_source_rgba(0,0,0,0.95)
+        ctx.set_line_width(2.2)
+        ctx.stroke()
+        ctx.restore()
+        tail_points = [(p1x,p1y),(p2x,p2y),(tip_x,tip_y)]
     # place text with safe fitting
     font_shrunk = False
     lines = [text]; line_metrics=[]; size=0; total_h=0; wrapped=False
@@ -299,7 +332,8 @@ def adaptive_circle_bubble(text, variant='radial5', target_inner_padding=20,
         'lines': lines,
         'font_size': size,
         'text_verified': text_verified,
-        'adjust_iterations': adjust_iterations
+        'adjust_iterations': adjust_iterations,
+        'tail_points': tail_points
     }
 
 # Adaptive rectangle bubble (square/rectangle base)
@@ -321,7 +355,8 @@ def find_free_bbox_rect(cx, cy, half_w, half_h, circles, samples=140):
 
 def adaptive_square_bubble(text, target_inner_padding=20, canvas_size=(600,600), aspect_ratio=1.1,
                             max_iterations=6, seed=5678, max_panel_fraction=0.3, min_font_size=12,
-                            wrap=False, max_lines=2, ensure_inside=True, verify_attempts=8):
+                            wrap=False, max_lines=2, ensure_inside=True, verify_attempts=8,
+                            tail_target=None, tail_length_factor=0.55, tail_width_factor=0.28, tail_style='triangle'):
     random.seed(seed)
     width,height = canvas_size
     surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, width, height)
@@ -368,6 +403,51 @@ def adaptive_square_bubble(text, target_inner_padding=20, canvas_size=(600,600),
 
     circles = create_overlapping_circles_square(ctx, cx, cy, half_w*2, half_h*2, text="", circle_style='laugh', show_full_ovals=False, return_circles=True)
     fcx,fcy,fw,fh = find_free_bbox_rect(cx, cy, half_w, half_h, circles, samples=150)
+    tail_points = None
+    if tail_target is not None:
+        tx, ty = tail_target
+        dx = tx - cx; dy = ty - cy
+        dist = math.hypot(dx, dy) or 1.0
+        ux, uy = dx/dist, dy/dist
+        # clamp attach along rectangle edge by intersecting ray with rectangle bounds
+        # param t where cx+ux*t hits edge
+        t_vals = []
+        if ux != 0:
+            t_vals.append(( (cx + half_w - cx)/ux ))  # right
+            t_vals.append(( (cx - half_w - cx)/ux ))  # left
+        if uy != 0:
+            t_vals.append(( (cy + half_h - cy)/uy ))  # bottom
+            t_vals.append(( (cy - half_h - cy)/uy ))  # top
+        # choose smallest positive t
+        attach_t = None
+        for tv in t_vals:
+            if tv>0 and (attach_t is None or tv < attach_t):
+                attach_t = tv
+        if attach_t is None:
+            attach_t = half_w  # fallback
+        attach_x = cx + ux * attach_t
+        attach_y = cy + uy * attach_t
+        px, py = -uy, ux
+        tail_len = max(half_w, half_h) * tail_length_factor
+        tail_w = max(half_w, half_h) * tail_width_factor
+        tip_x = attach_x + ux * tail_len
+        tip_y = attach_y + uy * tail_len
+        p1x = attach_x + px * tail_w * 0.5
+        p1y = attach_y + py * tail_w * 0.5
+        p2x = attach_x - px * tail_w * 0.5
+        p2y = attach_y - py * tail_w * 0.5
+        ctx.save()
+        ctx.set_source_rgba(1,1,1,1)
+        ctx.move_to(p1x, p1y)
+        ctx.line_to(p2x, p2y)
+        ctx.line_to(tip_x, tip_y)
+        ctx.close_path()
+        ctx.fill_preserve()
+        ctx.set_source_rgba(0,0,0,0.95)
+        ctx.set_line_width(2.2)
+        ctx.stroke()
+        ctx.restore()
+        tail_points = [(p1x,p1y),(p2x,p2y),(tip_x,tip_y)]
 
     font_shrunk = False
     lines=[text]; line_metrics=[]; size=0; total_h=0; wrapped=False
@@ -432,7 +512,8 @@ def adaptive_square_bubble(text, target_inner_padding=20, canvas_size=(600,600),
         'lines': lines,
         'font_size': size,
         'text_verified': text_verified,
-        'adjust_iterations': adjust_iterations
+        'adjust_iterations': adjust_iterations,
+        'tail_points': tail_points
     }
 
 # Demo runner
