@@ -181,7 +181,8 @@ def adaptive_circle_bubble(text, variant='radial5', target_inner_padding=20,
                             canvas_size=(600,600), max_iterations=5, seed=1234,
                             max_panel_fraction=0.3, min_font_size=12,
                             wrap=False, max_lines=2, ensure_inside=True, verify_attempts=8,
-                            tail_target=None, tail_length_factor=0.55, tail_width_factor=0.28, tail_style='triangle'):
+                            tail_target=None, tail_length_factor=0.55, tail_width_factor=0.28, tail_style='triangle',
+                            whitespace_scale=1.0, auto_whitespace=False):
     random.seed(seed)
     width,height = canvas_size
     surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, width, height)
@@ -192,9 +193,15 @@ def adaptive_circle_bubble(text, variant='radial5', target_inner_padding=20,
     measure_surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, 10,10)
     mctx = cairo.Context(measure_surface)
     tb = measure_text_block(mctx, text, max_width=width*0.55, font_size=64)
-
-    required_w = tb['width'] + 2*target_inner_padding
-    required_h = tb['height'] + 2*target_inner_padding
+    # Compute adaptive whitespace
+    if auto_whitespace:
+        # scale with panel smaller dimension leaving margin; clamp
+        base_pad = min(width, height) * 0.03 + target_inner_padding
+        effective_padding = base_pad * whitespace_scale
+    else:
+        effective_padding = target_inner_padding * whitespace_scale
+    required_w = tb['width'] + 2*effective_padding
+    required_h = tb['height'] + 2*effective_padding
 
     core_radius = max(required_w, required_h) * 0.55
     gen = RADIAL_GENERATORS[variant]
@@ -333,7 +340,9 @@ def adaptive_circle_bubble(text, variant='radial5', target_inner_padding=20,
         'font_size': size,
         'text_verified': text_verified,
         'adjust_iterations': adjust_iterations,
-        'tail_points': tail_points
+        'tail_points': tail_points,
+        'effective_padding': effective_padding,
+        'whitespace_scale': whitespace_scale
     }
 
 # Adaptive rectangle bubble (square/rectangle base)
@@ -356,7 +365,8 @@ def find_free_bbox_rect(cx, cy, half_w, half_h, circles, samples=140):
 def adaptive_square_bubble(text, target_inner_padding=20, canvas_size=(600,600), aspect_ratio=1.1,
                             max_iterations=6, seed=5678, max_panel_fraction=0.3, min_font_size=12,
                             wrap=False, max_lines=2, ensure_inside=True, verify_attempts=8,
-                            tail_target=None, tail_length_factor=0.55, tail_width_factor=0.28, tail_style='triangle'):
+                            tail_target=None, tail_length_factor=0.55, tail_width_factor=0.28, tail_style='triangle',
+                            whitespace_scale=1.0, auto_whitespace=False):
     random.seed(seed)
     width,height = canvas_size
     surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, width, height)
@@ -366,9 +376,13 @@ def adaptive_square_bubble(text, target_inner_padding=20, canvas_size=(600,600),
     measure_surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, 10,10)
     mctx = cairo.Context(measure_surface)
     tb = measure_text_block(mctx, text, max_width=width*0.55, font_size=64)
-
-    required_w = tb['width'] + 2*target_inner_padding
-    required_h = tb['height'] + 2*target_inner_padding
+    if auto_whitespace:
+        base_pad = min(width, height) * 0.03 + target_inner_padding
+        effective_padding = base_pad * whitespace_scale
+    else:
+        effective_padding = target_inner_padding * whitespace_scale
+    required_w = tb['width'] + 2*effective_padding
+    required_h = tb['height'] + 2*effective_padding
 
     half_w = required_w * 0.55 / 2
     half_h = (required_h * 0.55 / aspect_ratio) / 2
@@ -513,7 +527,9 @@ def adaptive_square_bubble(text, target_inner_padding=20, canvas_size=(600,600),
         'font_size': size,
         'text_verified': text_verified,
         'adjust_iterations': adjust_iterations,
-        'tail_points': tail_points
+        'tail_points': tail_points,
+        'effective_padding': effective_padding,
+        'whitespace_scale': whitespace_scale
     }
 
 # Demo runner

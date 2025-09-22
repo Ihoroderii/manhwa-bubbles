@@ -20,7 +20,7 @@ def main():
                 tail_args = {'tail_target': (200, 1000)}  # example speaker position
             surf, meta = adaptive_circle_bubble(t, variant=v, canvas_size=PANEL_SIZE, target_inner_padding=32,
                                                 max_panel_fraction=0.3, min_font_size=14, wrap=True, max_lines=2,
-                                                ensure_inside=True, **tail_args)
+                                                ensure_inside=True, whitespace_scale=1.6, auto_whitespace=True, **tail_args)
             out = f"adaptive_{base_slug}_{v}_800x1200.png"
             surf.write_to_png(out)
             print(out, meta)
@@ -30,7 +30,7 @@ def main():
             square_tail_args = {'tail_target': (650, 1050)}
         sq_surf, sq_meta = adaptive_square_bubble(t, canvas_size=PANEL_SIZE, target_inner_padding=28, aspect_ratio=1.3,
                                                   max_panel_fraction=0.3, min_font_size=14, wrap=True, max_lines=2,
-                                                  ensure_inside=True, **square_tail_args)
+                                                  ensure_inside=True, whitespace_scale=1.5, auto_whitespace=True, **square_tail_args)
         out_sq = f"adaptive_{base_slug}_square_800x1200.png"
         sq_surf.write_to_png(out_sq)
         print(out_sq, sq_meta)
